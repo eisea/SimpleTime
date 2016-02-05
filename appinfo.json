@@ -1,0 +1,49 @@
+{
+    "appKeys": {
+        "KEY_CONDITIONS": 1,
+        "KEY_TEMPERATURE": 0
+    },
+    "capabilities": [
+        "location",
+        "configurable",
+        "health"
+    ],
+    "companyName": "eisea12@gmail.com",
+    "enableMultiJS": true,
+    "longName": "AdamWatchface",
+    "projectType": "native",
+    "resources": {
+        "media": [
+            {
+                "file": "fonts/San Francisco 17",
+                "name": "SF_17",
+                "targetPlatforms": null,
+                "type": "font"
+            },
+            {
+                "file": "fonts/San Francisco 20",
+                "name": "SF_20",
+                "targetPlatforms": null,
+                "type": "font"
+            },
+            {
+                "file": "fonts/San Francisco",
+                "name": "SF_55",
+                "targetPlatforms": null,
+                "type": "font"
+            }
+        ]
+    },
+    "sdkVersion": "3",
+    "shortName": "AdamWatchface",
+    "targetPlatforms": [
+        "aplite",
+        "basalt",
+        "chalk"
+    ],
+    "uuid": "5f630f73-abe4-4511-98d9-2b9b250ea4d7",
+    "versionLabel": "1.0",
+    "watchapp": {
+        "watchface": true
+    }
+}
