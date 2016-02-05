@@ -14,11 +14,10 @@ static GFont s_date_font;
 // Battery
 static int s_battery_level;
 static Layer *s_battery_layer;
-/* Steps
+// Steps
 int s_steps;
-static TextLayer *s_steps_layer;
-static GFont s_steps_font;
-*/
+static TextLayer *s_num_label;
+
 
 static void update_time() {
   // Get a tm structure
@@ -39,12 +38,14 @@ static void update_time() {
   
   // Copy date into buffer from tm structure
   static char date_buffer[16];
-  strftime(date_buffer, sizeof(date_buffer), "%a %n %b %d", tick_time);
+  strftime(date_buffer, sizeof(date_buffer), PBL_IF_ROUND_ELSE("%a  %b %d", "%a %n %b %d"), tick_time);
 
   // Show the date
-  if(date_buffer[10]=='0') {
-  date_buffer[10]=date_buffer[11]; // copy the second digit on top of the first one
-  date_buffer[11]=0; // shorten the string by one character
+  int x;
+  PBL_IF_ROUND_ELSE(x = 9, x = 10);
+  if(date_buffer[x]=='0') {
+  date_buffer[x]=date_buffer[x+1]; // copy the second digit on top of the first one
+  date_buffer[x+1]=0; // shorten the string by one character
 }
   text_layer_set_text(s_date_layer, date_buffer);
 }
@@ -85,35 +86,18 @@ static void battery_update_proc(Layer *layer, GContext *ctx) {
   // Draw the bar
   graphics_context_set_fill_color(ctx, GColorBlack);
   graphics_fill_rect(ctx, GRect(0, 0, width, bounds.size.h), 0, GCornerNone);
-  graphics_fill_rect(ctx, GRect(0, 0, width, bounds.size.h), 0, GCornerNone);
-}
-
-
-/*
-static void steps_callback(int steps) {
-  s_steps = steps;
 }
 
 
 static void health_handler(HealthEventType event, void *context) {
-  // Which type of event occured?
-  switch(event) {
-    case HealthEventSignificantUpdate:
-      APP_LOG(APP_LOG_LEVEL_INFO, 
-              "New HealthService HealthEventSignificantUpdate event");
-      break;
-    case HealthEventMovementUpdate:
-      APP_LOG(APP_LOG_LEVEL_INFO, 
-              "New HealthService HealthEventMovementUpdate event");
-      break;
-    case HealthEventSleepUpdate:
-      APP_LOG(APP_LOG_LEVEL_INFO, 
-              "New HealthService HealthEventSleepUpdate event");
-      break;
+  static char s_value_buffer[8];
+  if (event == HealthEventMovementUpdate) {
+    // display the step count
+    snprintf(s_value_buffer, sizeof(s_value_buffer), "%d", (int)health_service_sum_today(HealthMetricStepCount));
+    text_layer_set_text(s_num_label, s_value_buffer);
   }
-  
 }
-*/
+
 
 static void main_window_load(Window *window) {
   // Get information about the Window
@@ -132,7 +116,7 @@ static void main_window_load(Window *window) {
   layer_add_child(window_layer, text_layer_get_layer(s_time_layer));
   
   // Date Layer
-  s_date_layer = text_layer_create(GRect(PBL_IF_ROUND_ELSE(62, 0), PBL_IF_ROUND_ELSE(15, 1), 55, 45));
+  s_date_layer = text_layer_create(GRect(PBL_IF_ROUND_ELSE(52, 0), PBL_IF_ROUND_ELSE(15, 1), PBL_IF_ROUND_ELSE(75, 45), 45));
   s_date_font = fonts_load_custom_font(resource_get_handle(RESOURCE_ID_SF_17));
   text_layer_set_text_color(s_date_layer, GColorBlack);
   text_layer_set_background_color(s_date_layer, GColorClear);
@@ -161,19 +145,21 @@ static void main_window_load(Window *window) {
   // Add Battery Layer to Window
   layer_add_child(window_get_root_layer(window), s_battery_layer);
   
-  /*
   // Steps Layer
-  s_steps_layer = text_layer_create(GRect(50, 1, 55, 45));
-  s_steps_font = fonts_load_custom_font(resource_get_handle(RESOURCE_ID_SF_17));
-  text_layer_set_text_color(s_steps_layer, GColorBlack);
-  text_layer_set_background_color(s_steps_layer, GColorClear);
-  text_layer_set_text_alignment(s_steps_layer, GTextAlignmentCenter);
-  text_layer_set_font(s_date_layer, s_steps_font);
-  printf("%d", s_steps);
+  s_num_label = text_layer_create(GRect(PBL_IF_ROUND_ELSE(67, 90), PBL_IF_ROUND_ELSE(37, 1), 50, 45));
+  text_layer_set_background_color(s_num_label, GColorClear);
+  text_layer_set_text_color(s_num_label, GColorBlack);
+  text_layer_set_text_alignment(s_num_label, PBL_IF_ROUND_ELSE(GTextAlignmentCenter, GTextAlignmentRight));
+  text_layer_set_font(s_num_label, fonts_load_custom_font(resource_get_handle(RESOURCE_ID_SF_17)));
+  layer_add_child(window_get_root_layer(window), text_layer_get_layer(s_num_label));
   
-  // Add Steps Layer to Window
-  layer_add_child(window_get_root_layer(window), text_layer_get_layer(s_steps_layer));
-  */
+  // subscribe to health events
+  if(health_service_events_subscribe(health_handler, NULL)) {
+    // force initial steps display
+    health_handler(HealthEventMovementUpdate, NULL);
+  } else {
+    APP_LOG(APP_LOG_LEVEL_ERROR, "Health not available!");
+  }
 }
 
 static void main_window_unload(Window *window) {
@@ -187,7 +173,7 @@ static void main_window_unload(Window *window) {
   fonts_unload_custom_font(s_date_font);
   text_layer_destroy(s_date_layer);
   layer_destroy(s_battery_layer);
-  //text_layer_destroy(s_steps_layer);
+  text_layer_destroy(s_num_label);
 
 }
 
@@ -245,49 +231,6 @@ static void init() {
   
   // Register for battery level updates
   battery_state_service_subscribe(battery_callback);
-  
-  
-  /*
-  
-  
-  #if defined(PBL_HEALTH)
-  // Attempt to subscribe 
-  if(health_service_events_subscribe(health_handler, NULL)) {
-    HealthMetric metric = HealthMetricStepCount;
-    time_t start = time_start_of_today();
-    time_t end = time(NULL);
-    HealthServiceAccessibilityMask mask = health_service_metric_accessible(metric, 
-                                                                      start, end);
-    bool any_data_available = mask & HealthServiceAccessibilityMaskAvailable;
-    if(any_data_available)
-      {
-      APP_LOG(APP_LOG_LEVEL_INFO, "Steps today: %d", 
-            (int)health_service_sum_today(metric));
-      steps_callback((int)health_service_sum_today(metric));
-      s_steps = (int)health_service_sum_today(metric);
-      printf("%d", s_steps);
-      
-      char str[10];
-      snprintf(str, 10, "%d", s_steps);
-      printf(str);
-      text_layer_set_text(s_steps_layer, str);
-      HealthActivityMask activities = health_service_peek_current_activities();
-      if(activities & HealthActivitySleep) {
-        APP_LOG(APP_LOG_LEVEL_INFO, "The user is sleeping.");
-      } else if(activities & HealthActivityRestfulSleep) {
-        APP_LOG(APP_LOG_LEVEL_INFO, "The user is sleeping peacefully.");
-      } else {
-        APP_LOG(APP_LOG_LEVEL_INFO, "The user is not currently sleeping.");
-      }
-    }
-    
-    
-  }
-  #else
-  APP_LOG(APP_LOG_LEVEL_ERROR, "Health not available!");
-  #endif
-  
-  */
   
   // Make sure the time is displayed from the start
   update_time();

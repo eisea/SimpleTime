@@ -10,7 +10,7 @@
     ],
     "companyName": "eisea12@gmail.com",
     "enableMultiJS": true,
-    "longName": "AdamWatchface",
+    "longName": "Simple Time",
     "projectType": "native",
     "resources": {
         "media": [
@@ -35,11 +35,9 @@
         ]
     },
     "sdkVersion": "3",
-    "shortName": "AdamWatchface",
+    "shortName": "Simple Time",
     "targetPlatforms": [
-        "aplite",
-        "basalt",
-        "chalk"
+        "basalt"
     ],
     "uuid": "5f630f73-abe4-4511-98d9-2b9b250ea4d7",
     "versionLabel": "1.0",
