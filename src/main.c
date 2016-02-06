@@ -1,6 +1,10 @@
 #include <pebble.h>
 #define KEY_TEMPERATURE 0
 #define KEY_CONDITIONS 1
+#define KEY_INVERT 2
+#define KEY_TWENTY_FOUR_HOUR_FORMAT 3
+#define KEY_CELSIUS 4
+
 static Window *s_main_window;
 // Font
 static TextLayer *s_time_layer;
@@ -54,6 +58,42 @@ static void update_time() {
   text_layer_set_text(s_date_layer, date_buffer);
 }
 
+static void invertColors() {
+  GColor background_color = GColorWhite;
+  window_set_background_color(s_main_window, background_color);
+  text_layer_set_text_color(s_text_layer, GColorWhite);
+}
+
+static void inbox_received_handler(DictionaryIterator *iter, void *context) {
+  Tuple *invert_t = dict_find(iter, KEY_INVERT);
+  Tuple *twenty_four_hour_format_t = dict_find(iter, KEY_TWENTY_FOUR_HOUR_FORMAT);
+  Tuple *celsius_t = dict_find(iter, KEY_CELSIUS);
+
+  if (invert_t) {
+    invert_t = invert_t->value->int8;
+
+    persist_write_int(KEY_INVERT, invertColors);
+
+    invertColors();
+  }
+
+  if (twenty_four_hour_format_t) {
+    twenty_four_hour_format = twenty_four_hour_format_t->value->int8;
+
+    persist_write_int(KEY_TWENTY_FOUR_HOUR_FORMAT, twenty_four_hour_format);
+
+    update_time();
+  }
+  
+  if (celcius_t) {
+    censius = celsius_t->value->int8;
+
+    persist_write_int(KEY_CELSIUS, celsius);
+
+    update_time();
+  }
+}
+
 static void tick_handler(struct tm *tick_time, TimeUnits units_changed) {
   update_time();
   // Get weather update every 30 minutes
@@ -84,11 +124,16 @@ static void battery_update_proc(Layer *layer, GContext *ctx) {
   int width = (int)(float)(((float)s_battery_level / 100.0F) * 114.0F);
 
   // Draw the background
-  graphics_context_set_fill_color(ctx, GColorWhite);
+  graphics_context_set_fill_color(ctx, GColorClear);
   graphics_fill_rect(ctx, bounds, 0, GCornerNone);
 
   // Draw the bar
-  graphics_context_set_fill_color(ctx, GColorBlack);
+  if (persist_read_bool(KEY_INVERT)) {
+    graphics_context_set_fill_color(ctx, GColorWhite);
+  } else {
+    graphics_context_set_fill_color(ctx, GColorBlack);
+  }
+  //graphics_context_set_fill_color(ctx, GColorBlack);
   graphics_fill_rect(ctx, GRect(0, 0, width, bounds.size.h), 0, GCornerNone);
 }
 
@@ -113,7 +158,21 @@ static void main_window_load(Window *window) {
   s_time_font = fonts_load_custom_font(resource_get_handle(RESOURCE_ID_SF_55));
   text_layer_set_font(s_time_layer, s_time_font);
   text_layer_set_background_color(s_time_layer, GColorClear);
-  text_layer_set_text_color(s_time_layer, GColorBlack);
+  
+  if (persist_read_bool(KEY_INVERT)) {
+    invert = persist_read_int(KEY_INVERT);
+    invert();
+  } else {
+    text_layer_set_text_color(s_time_layer, GColorBlack);
+  }
+
+  if (persist_read_bool(KEY_TWENTY_FOUR_HOUR_FORMAT)) {
+    twenty_four_hour_format = persist_read_bool(KEY_TWENTY_FOUR_HOUR_FORMAT);
+  }
+  
+  if (persist_read_bool(KEY_CELSIUS)) {
+    celsius = persist_read_int(KEY_CELSIUS);
+  }
   text_layer_set_text_alignment(s_time_layer, GTextAlignmentCenter);
 
   // Add Time Layer to Window
@@ -122,7 +181,7 @@ static void main_window_load(Window *window) {
   // Date Layer
   s_date_layer = text_layer_create(GRect(PBL_IF_ROUND_ELSE(52, 0), PBL_IF_ROUND_ELSE(15, 1), PBL_IF_ROUND_ELSE(75, 45), 45));
   s_date_font = fonts_load_custom_font(resource_get_handle(RESOURCE_ID_SF_17));
-  text_layer_set_text_color(s_date_layer, GColorBlack);
+  //text_layer_set_text_color(s_date_layer, GColorBlack);
   text_layer_set_background_color(s_date_layer, GColorClear);
   text_layer_set_text_alignment(s_date_layer, GTextAlignmentCenter);
   text_layer_set_font(s_date_layer, s_date_font);
@@ -133,7 +192,7 @@ static void main_window_load(Window *window) {
   // Weather Layer
   s_weather_layer = text_layer_create(GRect(0, PBL_IF_ROUND_ELSE(125, 120), bounds.size.w, 25));
   text_layer_set_background_color(s_weather_layer, GColorClear);
-  text_layer_set_text_color(s_weather_layer, GColorBlack);
+  //text_layer_set_text_color(s_weather_layer, GColorBlack);
   text_layer_set_text_alignment(s_weather_layer, GTextAlignmentCenter);
   text_layer_set_text(s_weather_layer, "Loading...");
   s_weather_font = fonts_load_custom_font(resource_get_handle(RESOURCE_ID_SF_20));
@@ -152,7 +211,7 @@ static void main_window_load(Window *window) {
   // Steps Layer
   s_num_label = text_layer_create(GRect(PBL_IF_ROUND_ELSE(67, 90), PBL_IF_ROUND_ELSE(37, 1), 50, 45));
   text_layer_set_background_color(s_num_label, GColorClear);
-  text_layer_set_text_color(s_num_label, GColorBlack);
+  //text_layer_set_text_color(s_num_label, GColorBlack);
   text_layer_set_text_alignment(s_num_label, PBL_IF_ROUND_ELSE(GTextAlignmentCenter, GTextAlignmentRight));
   text_layer_set_font(s_num_label, fonts_load_custom_font(resource_get_handle(RESOURCE_ID_SF_17)));
   layer_add_child(window_get_root_layer(window), text_layer_get_layer(s_num_label));
@@ -193,9 +252,13 @@ static void inbox_received_callback(DictionaryIterator *iterator, void *context)
   
   // If all data is available, use it
   if(temp_tuple && conditions_tuple) {
-    snprintf(temperature_buffer, sizeof(temperature_buffer), "%dº", (int)temp_tuple->value->int32);
-    snprintf(conditions_buffer, sizeof(conditions_buffer), "%s", conditions_tuple->value->cstring);
-    
+    if(celsius) {
+      snprintf(temperature_buffer, sizeof(temperature_buffer), "%dº", (int)temp_tuple->value->int32);
+      snprintf(conditions_buffer, sizeof(conditions_buffer), "%s", conditions_tuple->value->cstring);
+    } else {
+      snprintf(temperature_buffer, sizeof(temperature_buffer), "%dº", ((int)temp_tuple)*9/5 + 32->value->int32);
+      snprintf(conditions_buffer, sizeof(conditions_buffer), "%s", conditions_tuple->value->cstring);
+    }
     // Assemble full string and display
     snprintf(weather_layer_buffer, sizeof(weather_layer_buffer), "%s, %s", temperature_buffer, conditions_buffer);
     text_layer_set_text(s_weather_layer, weather_layer_buffer);
