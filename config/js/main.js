@@ -15,27 +15,30 @@ function submitHandler() {
 }
 
 function loadOptions() {
-  var $invertColors = $('#invertColors');
+  var $invertColorsCheckbox = $('#invertColors');
   var $timeFormatCheckbox = $('#timeFormatCheckbox');
-  var $
+  var $celsiusCheckbox = $('#celsiusCheckbox');
 
-  if (localStorage.backgroundColor) {
-    $backgroundColorPicker[0].value = localStorage.backgroundColor;
-    $timeFormatCheckbox[0].checked = localStorage.twentyFourHourFormat === 'true';
-  }
+  $invertColorsCheckbox[0].checked = localStorage.invertColors === 'true';
+  $timeFormatCheckbox[0].checked = localStorage.twentyFourHourFormat === 'true';
+  $celsiusCheckbox[0].checked = localStorage.celsius === 'true';
+  
 }
 
 function getAndStoreConfigData() {
-  var $backgroundColorPicker = $('#backgroundColorPicker');
+  var $invertColorsCheckbox = $('#invertColors');
   var $timeFormatCheckbox = $('#timeFormatCheckbox');
+  var $celsiusCheckbox = $('#celsiusCheckbox');
 
   var options = {
-    backgroundColor: $backgroundColorPicker.val(),
+    invertColors: $invertColorsCheckbox[0].checked,
     twentyFourHourFormat: $timeFormatCheckbox[0].checked
+    celsius: $celsiusCheckbox[0].checked
   };
 
-  localStorage.backgroundColor = options.backgroundColor;
+  localStorage.invertColors = options.invertColors;
   localStorage.twentyFourHourFormat = options.twentyFourHourFormat;
+  localStorage.celsius = options.celsius;
 
   console.log('Got options: ' + JSON.stringify(options));
   return options;
