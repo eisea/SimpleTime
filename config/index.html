@@ -8,28 +8,32 @@
 </head>
 <body>
   <div class='item-container'>
-    <h1 class='title'>Watchface<br>Configuration Page</h1>
+    <h1 class='title'>Simple Time<br>Preferences</h1>
   </div>
 
   <div class='item-container'>
     <div class='item-container-content'>
       <div class='item'>
         Use this configuration page to choose the settings you would like
-        applied to this app.
+        applied to this watchface.
       </div>
     </div>
   </div>
 
   <div class='item-container'>
-    <div class='item-container-header'>Customizability</div>
+    <div class='item-container-header'>Customizations</div>
     <div class='item-container-content'>
       <label class='item'>
-        Background Color
-        <input id='backgroundColorPicker' type='text' class='item-color item-color-sunny' value='#000000'>
+        Invert Colors
+        <input id='invertColors' type='checkbox' class='item-checkbox' unchecked>
       </label>
       <label class='item'>
         24-Hour Format
-        <input id='timeFormatCheckbox' type='checkbox' class='item-checkbox' checked>
+        <input id='timeFormatCheckbox' type='checkbox' class='item-checkbox' unchecked>
+      </label>
+      <label class='item'>
+        Celsius
+        <input id='timeFormatCheckbox' type='checkbox' class='item-checkbox' unchecked>
       </label>
     </div>
     <div class='item-container-footer'>
