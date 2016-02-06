@@ -18,6 +18,10 @@ static Layer *s_battery_layer;
 int s_steps;
 static TextLayer *s_num_label;
 
+static bool twenty_four_hour_format = false;
+static bool celsius = false;
+static bool invertColors = false;
+
 
 static void update_time() {
   // Get a tm structure
