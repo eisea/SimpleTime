@@ -58,23 +58,26 @@ static void update_time() {
   text_layer_set_text(s_date_layer, date_buffer);
 }
 
-static void invertColors() {
+static void invert() {
   GColor background_color = GColorWhite;
   window_set_background_color(s_main_window, background_color);
-  text_layer_set_text_color(s_text_layer, GColorWhite);
+  text_layer_set_text_color(s_time_layer, GColorWhite);
+  text_layer_set_text_color(s_date_layer, GColorWhite);
+  text_layer_set_text_color(s_weather_layer, GColorWhite);
+  text_layer_set_text_color(s_num_label, GColorWhite);
 }
-
+/*
 static void inbox_received_handler(DictionaryIterator *iter, void *context) {
   Tuple *invert_t = dict_find(iter, KEY_INVERT);
   Tuple *twenty_four_hour_format_t = dict_find(iter, KEY_TWENTY_FOUR_HOUR_FORMAT);
   Tuple *celsius_t = dict_find(iter, KEY_CELSIUS);
 
   if (invert_t) {
-    invert_t = invert_t->value->int8;
+    invertColors = invert_t->value->int8;
 
     persist_write_int(KEY_INVERT, invertColors);
 
-    invertColors();
+    invert();
   }
 
   if (twenty_four_hour_format_t) {
@@ -85,14 +88,15 @@ static void inbox_received_handler(DictionaryIterator *iter, void *context) {
     update_time();
   }
   
-  if (celcius_t) {
-    censius = celsius_t->value->int8;
+  if (celsius_t) {
+    celsius = celsius_t->value->int8;
 
     persist_write_int(KEY_CELSIUS, celsius);
 
     update_time();
   }
 }
+*/
 
 static void tick_handler(struct tm *tick_time, TimeUnits units_changed) {
   update_time();
@@ -133,6 +137,11 @@ static void battery_update_proc(Layer *layer, GContext *ctx) {
   } else {
     graphics_context_set_fill_color(ctx, GColorBlack);
   }
+  if (s_battery_level <= 20) {
+    graphics_context_set_fill_color(ctx, GColorRed);
+  } else if (s_battery_level == 100) {
+    graphics_context_set_fill_color(ctx, GColorBrightGreen);
+  }
   //graphics_context_set_fill_color(ctx, GColorBlack);
   graphics_fill_rect(ctx, GRect(0, 0, width, bounds.size.h), 0, GCornerNone);
 }
@@ -160,7 +169,7 @@ static void main_window_load(Window *window) {
   text_layer_set_background_color(s_time_layer, GColorClear);
   
   if (persist_read_bool(KEY_INVERT)) {
-    invert = persist_read_int(KEY_INVERT);
+    invertColors = persist_read_int(KEY_INVERT);
     invert();
   } else {
     text_layer_set_text_color(s_time_layer, GColorBlack);
@@ -246,23 +255,50 @@ static void inbox_received_callback(DictionaryIterator *iterator, void *context)
   static char conditions_buffer[32];
   static char weather_layer_buffer[32];
   
+  Tuple *invert_t = dict_find(iterator, KEY_INVERT);
+  Tuple *twenty_four_hour_format_t = dict_find(iterator, KEY_TWENTY_FOUR_HOUR_FORMAT);
+  Tuple *celsius_t = dict_find(iterator, KEY_CELSIUS);
+
+  if (invert_t) {
+    invertColors = invert_t->value->int8;
+
+    persist_write_int(KEY_INVERT, invertColors);
+
+    invert();
+  }
+
+  if (twenty_four_hour_format_t) {
+    twenty_four_hour_format = twenty_four_hour_format_t->value->int8;
+
+    persist_write_int(KEY_TWENTY_FOUR_HOUR_FORMAT, twenty_four_hour_format);
+
+    update_time();
+  }
+  
+  if (celsius_t) {
+    celsius = celsius_t->value->int8;
+
+    persist_write_int(KEY_CELSIUS, celsius);
+
+    update_time();
+  }
+  
   // Read tuples for data
   Tuple *temp_tuple = dict_find(iterator, KEY_TEMPERATURE);
   Tuple *conditions_tuple = dict_find(iterator, KEY_CONDITIONS);
+  int temp = temp_tuple->value->int32;
+  if(!(celsius)) {
+    temp = (int)(temp * 5.0/9.0 + 32);
+  }
   
   // If all data is available, use it
   if(temp_tuple && conditions_tuple) {
-    if(celsius) {
-      snprintf(temperature_buffer, sizeof(temperature_buffer), "%dº", (int)temp_tuple->value->int32);
-      snprintf(conditions_buffer, sizeof(conditions_buffer), "%s", conditions_tuple->value->cstring);
-    } else {
-      snprintf(temperature_buffer, sizeof(temperature_buffer), "%dº", ((int)temp_tuple)*9/5 + 32->value->int32);
-      snprintf(conditions_buffer, sizeof(conditions_buffer), "%s", conditions_tuple->value->cstring);
-    }
+    snprintf(temperature_buffer, sizeof(temperature_buffer), "%dº", temp);
+    snprintf(conditions_buffer, sizeof(conditions_buffer), "%s", conditions_tuple->value->cstring);
+  } 
     // Assemble full string and display
     snprintf(weather_layer_buffer, sizeof(weather_layer_buffer), "%s, %s", temperature_buffer, conditions_buffer);
     text_layer_set_text(s_weather_layer, weather_layer_buffer);
-  }
 }
 
 static void inbox_dropped_callback(AppMessageResult reason, void *context) {
@@ -327,3 +363,4 @@ int main(void) {
   app_event_loop();
   deinit();
 }
+
