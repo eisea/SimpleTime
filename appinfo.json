@@ -1,7 +1,10 @@
 {
     "appKeys": {
+        "KEY-CELSIUS": 4,
         "KEY_CONDITIONS": 1,
-        "KEY_TEMPERATURE": 0
+        "KEY_INVERT": 2,
+        "KEY_TEMPERATURE": 0,
+        "KEY_TWENTY-FOUR-HOUR-TIME": 3
     },
     "capabilities": [
         "location",
@@ -14,6 +17,13 @@
     "projectType": "native",
     "resources": {
         "media": [
+            {
+                "file": "images/SimpleTimeSmall",
+                "menuIcon": true,
+                "name": "IMAGE_SMALL",
+                "targetPlatforms": null,
+                "type": "bitmap"
+            },
             {
                 "file": "fonts/San Francisco 17",
                 "name": "SF_17",
@@ -28,7 +38,7 @@
             },
             {
                 "file": "fonts/San Francisco",
-                "name": "SF_55",
+                "name": "SF_53",
                 "targetPlatforms": null,
                 "type": "font"
             }
@@ -37,10 +47,12 @@
     "sdkVersion": "3",
     "shortName": "Simple Time",
     "targetPlatforms": [
-        "basalt"
+        "aplite",
+        "basalt",
+        "chalk"
     ],
-    "uuid": "5f630f73-abe4-4511-98d9-2b9b250ea4d7",
-    "versionLabel": "1.0",
+    "uuid": "8a96ed96-2dcc-4030-a22d-dcfdb06e0a16",
+    "versionLabel": "4.0",
     "watchapp": {
         "watchface": true
     }
