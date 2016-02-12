@@ -1,10 +1,10 @@
 {
     "appKeys": {
-        "KEY-CELSIUS": 4,
+        "KEY_CELSIUS": 4,
         "KEY_CONDITIONS": 1,
         "KEY_INVERT": 2,
         "KEY_TEMPERATURE": 0,
-        "KEY_TWENTY-FOUR-HOUR-TIME": 3
+        "KEY_TWENTY_FOUR_HOUR_FORMAT": 3
     },
     "capabilities": [
         "location",
@@ -51,7 +51,7 @@
         "basalt",
         "chalk"
     ],
-    "uuid": "8a96ed96-2dcc-4030-a22d-dcfdb06e0a16",
+    "uuid": "5f630f73-abe4-4511-98d9-2b9b250ea4d7",
     "versionLabel": "4.0",
     "watchapp": {
         "watchface": true

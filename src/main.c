@@ -201,7 +201,7 @@ static void main_window_load(Window *window) {
   s_battery_layer = layer_create(GRect(PBL_IF_ROUND_ELSE(0, 20), PBL_IF_ROUND_ELSE(0, 154), PBL_IF_ROUND_ELSE(180, 104), PBL_IF_ROUND_ELSE(180, 2)));
   s_weather_layer = text_layer_create(GRect(0, PBL_IF_ROUND_ELSE(117, 120), bounds.size.w, 55));
   s_time_layer = text_layer_create(GRect(0, PBL_IF_ROUND_ELSE(52, 46), bounds.size.w, 80));
-  s_date_layer = PBL_IF_BW_ELSE(text_layer_create(GRect(1, 2, bounds.size.w, 50)), text_layer_create(GRect(PBL_IF_ROUND_ELSE(46, 0), PBL_IF_ROUND_ELSE(15, 1), PBL_IF_ROUND_ELSE(90, 45), 45)));
+  s_date_layer = PBL_IF_BW_ELSE(text_layer_create(GRect(1, 2, bounds.size.w, 50)), text_layer_create(GRect(PBL_IF_ROUND_ELSE(46, 0), PBL_IF_ROUND_ELSE(15, 1), PBL_IF_ROUND_ELSE(90, 55), 55)));
   
   
   // Battery Layer
@@ -458,3 +458,5 @@ int main(void) {
   app_event_loop();
   deinit();
 }
+
+

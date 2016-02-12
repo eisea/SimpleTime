@@ -89,8 +89,8 @@ Pebble.addEventListener('webviewclosed', function(e) {
   console.log('Configuration page returned: ' + JSON.stringify(configData));
 
   Pebble.sendAppMessage({
-    'KEY_TWENTY_FOUR_HOUR_FORMAT': configData.twentyFourHourFormat,
-    'KEY_CELSIUS': configData.celsius
+    KEY_TWENTY_FOUR_HOUR_FORMAT: configData.twentyFourHourFormat,
+    KEY_CELSIUS: configData.celsius
   }, function() {
     console.log('Send successful!');
   }, function() {
