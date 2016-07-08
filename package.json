@@ -1,0 +1,72 @@
+{
+    "author": "eisea12@gmail.com",
+    "dependencies": {
+        "pebble-clay": "^1.0.1"
+    },
+    "keywords": [],
+    "name": "simple-time",
+    "pebble": {
+        "capabilities": [
+            "location",
+            "configurable",
+            "health"
+        ],
+        "displayName": "Simple Time",
+        "enableMultiJS": true,
+        "messageKeys": [
+            "KEY_TEMPERATURE",
+            "KEY_CONDITIONS",
+            "Twenty_Four_Hour_Format",
+            "Celsius",
+            "BackgroundColor",
+            "TextColor"
+        ],
+        "projectType": "native",
+        "resources": {
+            "media": [
+                {
+                    "file": "images/bluetooth",
+                    "name": "IMAGE_BT_ICON",
+                    "targetPlatforms": null,
+                    "type": "bitmap"
+                },
+                {
+                    "file": "images/SimpleTimeSmall",
+                    "menuIcon": true,
+                    "name": "IMAGE_SMALL",
+                    "targetPlatforms": null,
+                    "type": "bitmap"
+                },
+                {
+                    "file": "fonts/San Francisco 17",
+                    "name": "SF_17",
+                    "targetPlatforms": null,
+                    "type": "font"
+                },
+                {
+                    "file": "fonts/San Francisco 20",
+                    "name": "SF_20",
+                    "targetPlatforms": null,
+                    "type": "font"
+                },
+                {
+                    "file": "fonts/San Francisco",
+                    "name": "SF_53",
+                    "targetPlatforms": null,
+                    "type": "font"
+                }
+            ]
+        },
+        "sdkVersion": "3",
+        "targetPlatforms": [
+            "aplite",
+            "basalt",
+            "chalk"
+        ],
+        "uuid": "5f630f73-abe4-4511-98d9-2b9b250ea4d7",
+        "watchapp": {
+            "watchface": true
+        }
+    },
+    "version": "5.0.0"
+}
