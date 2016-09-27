@@ -13,15 +13,14 @@ static TextLayer *s_date_layer;
 static GFont s_date_font;
 // Battery
 static int s_battery_level;
-static Layer *s_battery_layer;
+static Layer *s_battery_layer; 
 // Steps
 int s_steps;
 static TextLayer *s_num_label;
 // Bluetooth
-static BitmapLayer *s_bt_icon_layer;
+static Layer *s_bt_icon_layer;
 static GBitmap *s_bt_icon_bitmap;
 
-static bool twenty_four_hour_format = false;
 static bool celsius = false;
 
 unsigned long createRGB(int r, int g, int b)
@@ -36,8 +35,9 @@ static void update_time() {
 
   // Write the current hours and minutes into a buffer
   static char s_buffer[8];
-  APP_LOG(APP_LOG_LEVEL_INFO, "24h:");
-  if (twenty_four_hour_format == 1) {
+  APP_LOG(APP_LOG_LEVEL_INFO, "24 hour time: %d", persist_read_bool(MESSAGE_KEY_Twenty_Four_Hour_Format));
+  if (persist_read_bool(MESSAGE_KEY_Twenty_Four_Hour_Format) == 1) {
+    APP_LOG(APP_LOG_LEVEL_INFO, "24h:");
     strftime(s_buffer, sizeof("00:00"), "%H:%M", tick_time);
   } else {
   APP_LOG(APP_LOG_LEVEL_INFO, "12h:");
@@ -70,8 +70,9 @@ static void update_time() {
 
 static void tick_handler(struct tm *tick_time, TimeUnits units_changed) {
   update_time();
-  // Get weather update every 30 minutes
-  if(tick_time->tm_min % 30 == 0) {
+  // Get weather update every n minutes
+  int fetch = persist_read_int(MESSAGE_KEY_Weather_Fetch);
+  if(tick_time->tm_min % fetch == 0) {
     // Begin dictionary
     DictionaryIterator *iter;
     app_message_outbox_begin(&iter);
@@ -91,6 +92,21 @@ static void battery_callback(BatteryChargeState state) {
   layer_mark_dirty(s_battery_layer);
 }
 
+/*
+
+static void accel_tap_handler(AccelAxisType axis, int32_t direction) {
+  // A tap event occured
+  APP_LOG(APP_LOG_LEVEL_INFO, "shake registered");
+}
+
+*/
+
+static void layer_update_proc(Layer *layer, GContext *ctx) {
+  // Draw the image with the correct compositing mode
+  graphics_context_set_compositing_mode(ctx, GCompOpSet);
+  graphics_draw_bitmap_in_rect(ctx, s_bt_icon_bitmap, gbitmap_get_bounds(s_bt_icon_bitmap));
+}
+
 static void battery_update_proc(Layer *layer, GContext *ctx) {
   GRect bounds = layer_get_bounds(layer);
 
@@ -99,8 +115,12 @@ static void battery_update_proc(Layer *layer, GContext *ctx) {
   int width = (int)(float)(percent * bounds.size.w);
 
   // Draw the background
-  graphics_context_set_fill_color(ctx, GColorClear);
-  graphics_fill_rect(ctx, bounds, 0, GCornerNone);
+  
+  GColor bgcolor = GColorFromHEX(persist_read_int(MESSAGE_KEY_BackgroundColor));
+  GColor batterycolor;
+  
+  //graphics_context_set_fill_color(ctx, GColorClear);
+  //graphics_fill_rect(ctx, bounds, 0, GCornerNone);
 
   // Draw the bar
   int g = (255 * percent);
@@ -113,11 +133,18 @@ static void battery_update_proc(Layer *layer, GContext *ctx) {
     g = 255;
   }
   if (s_battery_level == 50) {
-    r = 255;
-    g = 170;
+    rgb = 0xFFAA00;
+  }
+  int x = persist_read_int(MESSAGE_KEY_Battery);
+  APP_LOG(APP_LOG_LEVEL_INFO, "Battery Preference: %d", x);
+  if (persist_read_int(MESSAGE_KEY_Battery) != 102) {
+    APP_LOG(APP_LOG_LEVEL_INFO, "RGB");
+    batterycolor = GColorFromHEX(rgb);
+  } else {
+    batterycolor = gcolor_legible_over(bgcolor);
   }
 
-  PBL_IF_BW_ELSE(graphics_context_set_fill_color(ctx, GColorBlack), graphics_context_set_fill_color(ctx, GColorFromRGB(r,g,b)));
+  PBL_IF_BW_ELSE(graphics_context_set_fill_color(ctx, batterycolor), graphics_context_set_fill_color(ctx, batterycolor));
   //APP_LOG(APP_LOG_LEVEL_INFO, GColorFromHEX(rgb));
   
   /*
@@ -140,7 +167,7 @@ static void battery_update_proc(Layer *layer, GContext *ctx) {
 
 static void bluetooth_callback(bool connected) {  
   // Show icon if disconnected
-  layer_set_hidden(bitmap_layer_get_layer(s_bt_icon_layer), connected);
+  layer_set_hidden(s_bt_icon_layer, connected);
   if (connected) {
     APP_LOG(APP_LOG_LEVEL_INFO, "BT reconnected, calling weather");
     DictionaryIterator *iter;
@@ -178,8 +205,8 @@ static void main_window_load(Window *window) {
   s_battery_layer = layer_create(GRect(PBL_IF_ROUND_ELSE(0, 20), PBL_IF_ROUND_ELSE(0, 154), PBL_IF_ROUND_ELSE(180, 104), PBL_IF_ROUND_ELSE(180, 2)));
   s_weather_layer = text_layer_create(GRect(0, PBL_IF_ROUND_ELSE(117, 120), bounds.size.w, 55));
   s_time_layer = text_layer_create(GRect(0, PBL_IF_ROUND_ELSE(52, 46), bounds.size.w, 80));
-  s_date_layer = PBL_IF_BW_ELSE(text_layer_create(GRect(1, 2, bounds.size.w, 50)), text_layer_create(GRect(PBL_IF_ROUND_ELSE(42, 0), PBL_IF_ROUND_ELSE(15, 1), PBL_IF_ROUND_ELSE(97, 65), 55)));
-  s_bt_icon_layer = PBL_IF_BW_ELSE(bitmap_layer_create(GRect(60, 115, 30, 30)), bitmap_layer_create(GRect(PBL_IF_ROUND_ELSE(75, 62), PBL_IF_ROUND_ELSE(135, 8), 30, 30)));
+  s_date_layer = PBL_IF_BW_ELSE(text_layer_create(GRect(1, 2, bounds.size.w, 50)), text_layer_create(GRect(PBL_IF_ROUND_ELSE(42, 1), PBL_IF_ROUND_ELSE(15, 1), PBL_IF_ROUND_ELSE(97, 65), 55)));
+  s_bt_icon_layer = PBL_IF_BW_ELSE(layer_create(GRect(60, 115, 30, 30)), layer_create(GRect(PBL_IF_ROUND_ELSE(75, 62), PBL_IF_ROUND_ELSE(135, 8), 30, 30)));
   
   
   int textcolor = persist_read_int(MESSAGE_KEY_TextColor);
@@ -187,7 +214,8 @@ static void main_window_load(Window *window) {
   GColor bg_color = GColorFromHEX(background);
   GColor text_color = GColorFromHEX(textcolor);
   window_set_background_color(s_main_window, bg_color);
-  
+  APP_LOG(APP_LOG_LEVEL_INFO, "Text Color is: %d", textcolor);
+  APP_LOG(APP_LOG_LEVEL_INFO, "Background Color is: %d", background);
   
   
   // Battery Layer
@@ -197,12 +225,6 @@ static void main_window_load(Window *window) {
   layer_add_child(window_get_root_layer(window), s_battery_layer);
   
   
-  // Create the Bluetooth icon GBitmap
-  s_bt_icon_bitmap = gbitmap_create_with_resource(RESOURCE_ID_IMAGE_BT_ICON);
-
-  // Create the BitmapLayer to display the GBitmap
-  bitmap_layer_set_bitmap(s_bt_icon_layer, s_bt_icon_bitmap);
-  layer_add_child(window_get_root_layer(window), bitmap_layer_get_layer(s_bt_icon_layer));
 
   
   APP_LOG(APP_LOG_LEVEL_INFO, "reading key: celsius");
@@ -247,10 +269,6 @@ static void main_window_load(Window *window) {
   APP_LOG(APP_LOG_LEVEL_INFO, "reading key: invert");
 
   APP_LOG(APP_LOG_LEVEL_INFO, "reading key: 24h");
-
-  if (persist_read_bool(MESSAGE_KEY_Twenty_Four_Hour_Format)) {
-    twenty_four_hour_format = persist_read_bool(MESSAGE_KEY_Twenty_Four_Hour_Format);
-  }
   
 
   
@@ -276,19 +294,44 @@ static void main_window_load(Window *window) {
   layer_add_child(window_get_root_layer(window), text_layer_get_layer(s_date_layer));
   
   
+  // Create the Bluetooth icon GBitmap
+  APP_LOG(APP_LOG_LEVEL_INFO, "Reading Bluetooth color: %d", persist_read_bool(MESSAGE_KEY_Bluetooth));
+  if (persist_read_int(MESSAGE_KEY_Bluetooth) == 102) {
+    s_bt_icon_bitmap = gbitmap_create_with_resource(RESOURCE_ID_IMAGE_BT_ICON);
+  } else {
+    s_bt_icon_bitmap = gbitmap_create_with_resource(RESOURCE_ID_IMAGE_BT_ICON_BLACK);
+  }
+  // Create the BitmapLayer to display the GBitmap
+  s_bt_icon_layer = PBL_IF_BW_ELSE(layer_create(GRect(60, 115, 30, 30)), layer_create(GRect(PBL_IF_ROUND_ELSE(75, 62), PBL_IF_ROUND_ELSE(135, 8), 30, 30)));
+  layer_set_update_proc(s_bt_icon_layer, layer_update_proc);
+  //bitmap_layer_set_bitmap(s_bt_icon_layer, s_bt_icon_bitmap);
+  layer_add_child(window_layer, s_bt_icon_layer);
   
   APP_LOG(APP_LOG_LEVEL_INFO, "steps time");
 
   // Steps Layer
+  
+  // subscribe to health events
+  int goal_num = persist_read_int(MESSAGE_KEY_Step_Goal);
+  int steps = persist_read_int(MESSAGE_KEY_Goal_Color);
+  GColor steps_color = GColorFromHEX(steps);
   s_num_label = text_layer_create(GRect(PBL_IF_ROUND_ELSE(67, 90), PBL_IF_ROUND_ELSE(37, 1), 50, 45));
   text_layer_set_background_color(s_num_label, GColorClear);
   text_layer_set_text_color(s_num_label, text_color);
+  int s_step_count = (int)health_service_sum_today(HealthMetricStepCount);
+  if (goal_num == 0 || s_step_count < goal_num) {
+    int textcolor = persist_read_int(MESSAGE_KEY_TextColor);
+    GColor text_color = GColorFromHEX(textcolor);
+    text_layer_set_text_color(s_num_label, text_color);
+  }
+  else {
+    text_layer_set_text_color(s_num_label, steps_color);
+  }
   //text_layer_set_text_color(s_num_label, GColorBlack);
   text_layer_set_text_alignment(s_num_label, PBL_IF_ROUND_ELSE(GTextAlignmentCenter, GTextAlignmentRight));
   text_layer_set_font(s_num_label, fonts_load_custom_font(resource_get_handle(RESOURCE_ID_SF_17)));
   layer_add_child(window_get_root_layer(window), text_layer_get_layer(s_num_label));
   
-  // subscribe to health events
   if(health_service_events_subscribe(health_handler, NULL)) {
     // force initial steps display
     health_handler(HealthEventMovementUpdate, NULL);
@@ -321,7 +364,7 @@ static void main_window_unload(Window *window) {
   layer_destroy(s_battery_layer);
   text_layer_destroy(s_num_label);
   gbitmap_destroy(s_bt_icon_bitmap);
-  bitmap_layer_destroy(s_bt_icon_layer);
+  layer_destroy(s_bt_icon_layer);
   APP_LOG(APP_LOG_LEVEL_INFO, "Main window unloaded");
 
 }
@@ -337,39 +380,62 @@ static void inbox_received_handler(DictionaryIterator *iterator, void *context) 
   //static char location_layer_buffer[38];
   
   //Tuple *invert_t = dict_find(iterator, KEY_INVERT);
+  APP_LOG(APP_LOG_LEVEL_INFO, "Reading 24 hour Tuple");
   Tuple *twenty_four_hour_format_t = dict_find(iterator, MESSAGE_KEY_Twenty_Four_Hour_Format);
+  APP_LOG(APP_LOG_LEVEL_INFO, "Reading Celsius Tuple");
   Tuple *celsius_t = dict_find(iterator, MESSAGE_KEY_Celsius);
+  APP_LOG(APP_LOG_LEVEL_INFO, "Reading Background color Tuple");
   Tuple *bg_color_t = dict_find(iterator, MESSAGE_KEY_BackgroundColor);
   if(bg_color_t) {
-    GColor bg_color = GColorFromHEX(bg_color_t->value->int32);
+    //bg_color = GColorFromHEX(bg_color_t->value->int32);
+    int background = bg_color_t->value->int32;
+    persist_write_int(MESSAGE_KEY_BackgroundColor, background);
   }
-
+  else if(!persist_exists(MESSAGE_KEY_BackgroundColor)) {
+    persist_write_int(MESSAGE_KEY_BackgroundColor, 0xFFFFFF);
+  }
+  APP_LOG(APP_LOG_LEVEL_INFO, "Reading Text color Tuple");
   Tuple *fg_color_t = dict_find(iterator, MESSAGE_KEY_TextColor);
   if(fg_color_t) {
-    GColor fg_color = GColorFromHEX(fg_color_t->value->int32);
+    //text_color = GColorFromHEX(fg_color_t->value->int32);
+    int textColor = fg_color_t->value->int32;
+    persist_write_int(MESSAGE_KEY_TextColor, textColor);
   }
+  else if(!persist_exists(MESSAGE_KEY_TextColor)) {
+    persist_write_int(MESSAGE_KEY_TextColor, 0x000000);
+  }
+  APP_LOG(APP_LOG_LEVEL_INFO, "Reading Battery Tuple");
+  Tuple *battery_t = dict_find(iterator, MESSAGE_KEY_Battery);
+  
+  APP_LOG(APP_LOG_LEVEL_INFO, "Reading Bluetooth Tuple");
+  Tuple *bluetooth_t = dict_find(iterator, MESSAGE_KEY_Bluetooth);
   //Tuple *custom_location_t = dict_find(iterator, KEY_CUSTOM_LOCATION);
   
-  int background = bg_color_t->value->int32;
-  int textcolor = fg_color_t->value->int32;
+  APP_LOG(APP_LOG_LEVEL_INFO, "Reading Weather Fetch Tuple");
+  Tuple *weather_fetch_t = dict_find(iterator, MESSAGE_KEY_Weather_Fetch);
   
-  persist_write_int(MESSAGE_KEY_BackgroundColor, background);
-  persist_write_int(MESSAGE_KEY_TextColor, textcolor);
+  APP_LOG(APP_LOG_LEVEL_INFO, "Reading Step Goal Tuple");
+  Tuple *step_goal_t = dict_find(iterator, MESSAGE_KEY_Step_Goal);
   
-  GColor bg_color = GColorFromHEX(background);
+  APP_LOG(APP_LOG_LEVEL_INFO, "Reading Goal Color Tuple");
+  Tuple *goal_color_t = dict_find(iterator, MESSAGE_KEY_Goal_Color);
+  
+  
+  GColor bg_color = GColorFromHEX(persist_read_int(MESSAGE_KEY_BackgroundColor));
   window_set_background_color(s_main_window, bg_color);
-  GColor text_color = GColorFromHEX(textcolor);
-  text_layer_set_text_color(s_num_label, text_color);
+  GColor text_color = GColorFromHEX(persist_read_int(MESSAGE_KEY_TextColor));
+  //text_layer_set_text_color(s_num_label, text_color);
 	text_layer_set_text_color(s_date_layer, text_color);
   text_layer_set_text_color(s_weather_layer, text_color);
   text_layer_set_text_color(s_time_layer, text_color);
   
+  
+  
   if (twenty_four_hour_format_t) {
-    twenty_four_hour_format = twenty_four_hour_format_t->value->int8;
-
-    persist_write_bool(MESSAGE_KEY_Twenty_Four_Hour_Format, twenty_four_hour_format);
-
+    
+    persist_write_bool(MESSAGE_KEY_Twenty_Four_Hour_Format, twenty_four_hour_format_t->value->int8);
     update_time();
+    
   }
   
   if (celsius_t) {
@@ -387,8 +453,50 @@ static void inbox_received_handler(DictionaryIterator *iterator, void *context) 
   
     // Send the message!
     app_message_outbox_send();
-
+    
   }
+  
+  if (battery_t) {
+    int battery_pref = battery_t->value->int8;
+    persist_write_int(MESSAGE_KEY_Battery, battery_pref);
+    layer_mark_dirty(s_battery_layer);
+  }
+  
+  if (bluetooth_t) {
+    int bt = bluetooth_t->value->int8;
+    persist_write_int(MESSAGE_KEY_Bluetooth, bt);
+  }
+  
+  if (weather_fetch_t) {
+    int fetch = weather_fetch_t->value->int8;
+    persist_write_int(MESSAGE_KEY_Weather_Fetch, fetch);
+  }
+  
+  //STEP GOALS
+  if (step_goal_t) {
+    int step_goal = step_goal_t->value->int32;
+    persist_write_int(MESSAGE_KEY_Step_Goal, step_goal);
+  }
+  
+  if (goal_color_t) {
+    int steps_color = goal_color_t->value->int32;
+    persist_write_int(MESSAGE_KEY_Goal_Color, steps_color);
+    int goal_num = persist_read_int(MESSAGE_KEY_Step_Goal);
+    GColor goal_color = GColorFromHEX(steps_color);
+    APP_LOG(APP_LOG_LEVEL_INFO, "Steps today: %d", (int)health_service_sum_today(HealthMetricStepCount));
+    APP_LOG(APP_LOG_LEVEL_INFO, "Goal Steps: %d", goal_num);
+    if (goal_num == 0 || (int)health_service_sum_today(HealthMetricStepCount) < goal_num) {
+      text_layer_set_text_color(s_num_label, text_color);
+    }
+    else {
+      text_layer_set_text_color(s_num_label, goal_color);
+    }
+  }
+  else if(!persist_exists(MESSAGE_KEY_Goal_Color)) {
+    persist_write_int(MESSAGE_KEY_Goal_Color, 0x000000);
+  }
+  
+  
   /*
   if (custom_location_t) {
     customLocation = custom_location_t->value->cstring;
@@ -413,9 +521,9 @@ static void inbox_received_handler(DictionaryIterator *iterator, void *context) 
   Tuple *temp_tuple = dict_find(iterator, MESSAGE_KEY_KEY_TEMPERATURE);
   Tuple *conditions_tuple = dict_find(iterator, MESSAGE_KEY_KEY_CONDITIONS);
 
-  APP_LOG(APP_LOG_LEVEL_INFO, "initializing temp");
+  //APP_LOG(APP_LOG_LEVEL_INFO, "initializing temp");
   //temp = (int)temp_tuple->value->int32;
-  APP_LOG(APP_LOG_LEVEL_INFO, "temp initialized");
+  //APP_LOG(APP_LOG_LEVEL_INFO, "temp initialized");
   //if(celsius == false) {
   //  temp = (int)(temp * 5.0/9.0 + 32);
   //}
@@ -475,6 +583,13 @@ static void init() {
   
   // Register for battery level updates
   battery_state_service_subscribe(battery_callback);
+  
+  /*
+  
+  // Subscribe to tap events
+  accel_tap_service_subscribe(accel_tap_handler);
+
+  */
 
   APP_LOG(APP_LOG_LEVEL_INFO, "Battery subscribed");
   

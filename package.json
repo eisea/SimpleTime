@@ -19,16 +19,27 @@
             "Twenty_Four_Hour_Format",
             "Celsius",
             "BackgroundColor",
-            "TextColor"
+            "TextColor",
+            "Battery",
+            "Bluetooth",
+            "Weather_Fetch",
+            "Goal_Color",
+            "Step_Goal"
         ],
         "projectType": "native",
         "resources": {
             "media": [
                 {
-                    "file": "images/bluetooth",
+                    "file": "images/bluetooth black",
+                    "name": "IMAGE_BT_ICON_BLACK",
+                    "targetPlatforms": null,
+                    "type": "png"
+                },
+                {
+                    "file": "images/bluetooth white",
                     "name": "IMAGE_BT_ICON",
                     "targetPlatforms": null,
-                    "type": "bitmap"
+                    "type": "png"
                 },
                 {
                     "file": "images/SimpleTimeSmall",
@@ -59,7 +70,6 @@
         },
         "sdkVersion": "3",
         "targetPlatforms": [
-            "aplite",
             "basalt",
             "chalk"
         ],
@@ -68,5 +78,5 @@
             "watchface": true
         }
     },
-    "version": "5.0.0"
+    "version": "5.2.0"
 }
