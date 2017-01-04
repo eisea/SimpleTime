@@ -20,7 +20,7 @@ static TextLayer *s_num_label;
 // Bluetooth
 static Layer *s_bt_icon_layer;
 static GBitmap *s_bt_icon_bitmap;
-
+int min_count = 0;
 static bool celsius = false;
 
 unsigned long createRGB(int r, int g, int b)
@@ -70,9 +70,21 @@ static void update_time() {
 
 static void tick_handler(struct tm *tick_time, TimeUnits units_changed) {
   update_time();
+  /*if(units_changed = DAY_UNIT) {
+    vibe = 0;
+  }*/  
+  
+  min_count = min_count+1;
+  
   // Get weather update every n minutes
   int fetch = persist_read_int(MESSAGE_KEY_Weather_Fetch);
-  if(tick_time->tm_min % fetch == 0) {
+  
+  APP_LOG(APP_LOG_LEVEL_INFO, "count=%d", min_count);
+  APP_LOG(APP_LOG_LEVEL_INFO, "fetch=%d", fetch);
+  
+  //if(tick_time->tm_min % fetch == 0) {
+  if(min_count > fetch) {
+    min_count = 0;
     // Begin dictionary
     DictionaryIterator *iter;
     app_message_outbox_begin(&iter);
@@ -185,8 +197,34 @@ static void bluetooth_callback(bool connected) {
 static void health_handler(HealthEventType event, void *context) {
   static char s_value_buffer[8];
   if (event == HealthEventMovementUpdate) {
+    if (persist_exists(MESSAGE_KEY_Step_Goal)) {
+      int steps_color = persist_read_int(MESSAGE_KEY_Goal_Color);
+      int goal_num = persist_read_int(MESSAGE_KEY_Step_Goal);
+      GColor goal_color = GColorFromHEX(steps_color);
+      APP_LOG(APP_LOG_LEVEL_INFO, "Steps today (health handler): %d", (int)health_service_sum_today(HealthMetricStepCount));
+      APP_LOG(APP_LOG_LEVEL_INFO, "Goal Steps (health handler): %d", goal_num);
+      if (!(goal_num == 0 || (int)health_service_sum_today(HealthMetricStepCount) < goal_num)) {
+        text_layer_set_text_color(s_num_label, goal_color);
+        APP_LOG(APP_LOG_LEVEL_ERROR, "Steps color is Goal Color");
+        if (persist_exists(MESSAGE_KEY_vibe)) {
+          int vibe1 = persist_read_int(MESSAGE_KEY_vibe);
+          if (vibe1 < 1){
+            vibes_short_pulse();
+            APP_LOG(APP_LOG_LEVEL_INFO, "Goal Reached! Vibrating...");
+            vibe1 = 1;
+            persist_write_int(MESSAGE_KEY_vibe, 1);
+          }
+        }
+      }
+    }
     // display the step count
     snprintf(s_value_buffer, sizeof(s_value_buffer), "%d", (int)health_service_sum_today(HealthMetricStepCount));
+    text_layer_set_text(s_num_label, s_value_buffer);
+  }
+  else if (event == HealthEventSignificantUpdate) {
+    persist_write_int(MESSAGE_KEY_vibe, 0);
+    snprintf(s_value_buffer, sizeof(s_value_buffer), "%d", (int)health_service_sum_today(HealthMetricStepCount));
+    text_layer_set_text_color(s_num_label, GColorFromHEX(persist_read_int(MESSAGE_KEY_TextColor)));
     text_layer_set_text(s_num_label, s_value_buffer);
   }
 }
@@ -315,18 +353,24 @@ static void main_window_load(Window *window) {
   int goal_num = persist_read_int(MESSAGE_KEY_Step_Goal);
   int steps = persist_read_int(MESSAGE_KEY_Goal_Color);
   GColor steps_color = GColorFromHEX(steps);
-  s_num_label = text_layer_create(GRect(PBL_IF_ROUND_ELSE(67, 90), PBL_IF_ROUND_ELSE(37, 1), 50, 45));
+  s_num_label = text_layer_create(GRect(PBL_IF_ROUND_ELSE(67, 85), PBL_IF_ROUND_ELSE(37, 1), PBL_IF_ROUND_ELSE(50, 55), 45));
   text_layer_set_background_color(s_num_label, GColorClear);
   text_layer_set_text_color(s_num_label, text_color);
+  APP_LOG(APP_LOG_LEVEL_ERROR, "Steps color is Text Color");
   int s_step_count = (int)health_service_sum_today(HealthMetricStepCount);
+  APP_LOG(APP_LOG_LEVEL_ERROR, "goal: %d", goal_num);
+  APP_LOG(APP_LOG_LEVEL_ERROR, "steps: %d", s_step_count);
   if (goal_num == 0 || s_step_count < goal_num) {
     int textcolor = persist_read_int(MESSAGE_KEY_TextColor);
     GColor text_color = GColorFromHEX(textcolor);
     text_layer_set_text_color(s_num_label, text_color);
+    APP_LOG(APP_LOG_LEVEL_ERROR, "Steps color is Text Color");
   }
   else {
     text_layer_set_text_color(s_num_label, steps_color);
+    APP_LOG(APP_LOG_LEVEL_ERROR, "Steps color is Goal Color");
   }
+  
   //text_layer_set_text_color(s_num_label, GColorBlack);
   text_layer_set_text_alignment(s_num_label, PBL_IF_ROUND_ELSE(GTextAlignmentCenter, GTextAlignmentRight));
   text_layer_set_font(s_num_label, fonts_load_custom_font(resource_get_handle(RESOURCE_ID_SF_17)));
@@ -487,9 +531,17 @@ static void inbox_received_handler(DictionaryIterator *iterator, void *context) 
     APP_LOG(APP_LOG_LEVEL_INFO, "Goal Steps: %d", goal_num);
     if (goal_num == 0 || (int)health_service_sum_today(HealthMetricStepCount) < goal_num) {
       text_layer_set_text_color(s_num_label, text_color);
-    }
-    else {
-      text_layer_set_text_color(s_num_label, goal_color);
+    } else {
+      if (persist_exists(MESSAGE_KEY_vibe)){
+        int vibe2 = persist_read_int(MESSAGE_KEY_vibe);
+        if (vibe2 < 1){
+          vibes_short_pulse();
+          APP_LOG(APP_LOG_LEVEL_INFO, "Goal Reached! Vibrating...");
+          vibe2 = 1;
+          persist_write_int(MESSAGE_KEY_vibe, 1);
+        }
+        text_layer_set_text_color(s_num_label, goal_color);
+      }
     }
   }
   else if(!persist_exists(MESSAGE_KEY_Goal_Color)) {

@@ -24,7 +24,8 @@
             "Bluetooth",
             "Weather_Fetch",
             "Goal_Color",
-            "Step_Goal"
+            "Step_Goal",
+            "vibe"
         ],
         "projectType": "native",
         "resources": {
@@ -45,7 +46,10 @@
                     "file": "images/SimpleTimeSmall",
                     "menuIcon": true,
                     "name": "IMAGE_SMALL",
-                    "targetPlatforms": null,
+                    "targetPlatforms": [
+                        "basalt",
+                        "chalk"
+                    ],
                     "type": "bitmap"
                 },
                 {
