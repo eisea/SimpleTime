@@ -125,7 +125,7 @@ static void battery_update_proc(Layer *layer, GContext *ctx) {
   // Find the width of the bar
   float percent = ((float)s_battery_level / 100.0F);
   int width = (int)(float)(percent * bounds.size.w);
-
+  int timewidth = (int)(float)(percent * 104);
   // Draw the background
   
   GColor bgcolor = GColorFromHEX(persist_read_int(MESSAGE_KEY_BackgroundColor));
@@ -171,9 +171,13 @@ static void battery_update_proc(Layer *layer, GContext *ctx) {
   
   //graphics_context_set_fill_color(ctx, GColorBlack);
   
+  int midTime = 52;
+  int offsetTime = (1-percent)*midTime;
+  timewidth = timewidth;//-offsetTime;
+  
   PBL_IF_ROUND_ELSE(graphics_fill_radial(ctx, frame, GOvalScaleModeFitCircle, 5,
-                       DEG_TO_TRIGANGLE(125+((1-percent)*110)), DEG_TO_TRIGANGLE(235)), 
-                    graphics_fill_rect(ctx, GRect(0, 0, width, bounds.size.h), 0, GCornerNone));
+                       DEG_TO_TRIGANGLE(125+((1-percent)*55)), DEG_TO_TRIGANGLE(235-(1-percent)*55)), 
+                    graphics_fill_rect(ctx, GRect(offsetTime, 0, timewidth, bounds.size.h), 0, GCornerNone));
   
 }
 
