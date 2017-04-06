@@ -28,22 +28,6 @@ module.exports = [
       },
       {
         "type": "radiogroup",
-        "messageKey": "Battery",
-        "label": "Battery Bar",
-        "defaultValue": "Classic",
-        "options": [
-          { 
-            "label": "Classic", 
-            "value": true
-          },
-          { 
-            "label": "Solid", 
-            "value": false
-          }
-        ]
-      },
-      {
-        "type": "radiogroup",
         "messageKey": "Bluetooth",
         "label": "Bluetooth Disconnect Icon",
         "defaultValue": "Black",
@@ -67,6 +51,37 @@ module.exports = [
         "min": 5,
         "max": 60,
         "step": 5
+      }
+    ]
+  },
+  {
+    "type": "section",
+    "items": [
+      {
+        "type": "heading",
+        "defaultValue": "Battery Bar"
+      },
+      {
+        "type": "radiogroup",
+        "messageKey": "Battery",
+        "label": "Color",
+        "defaultValue": "Classic",
+        "options": [
+          { 
+            "label": "Classic", 
+            "value": true
+          },
+          { 
+            "label": "Solid", 
+            "value": false
+          }
+        ]
+      },
+      {
+        "type": "toggle",
+        "messageKey": "direction",
+        "label": "Centered",
+        "defaultValue": false
       }
     ]
   },
@@ -116,6 +131,12 @@ module.exports = [
         "defaultValue": "0x000000",
         "label": "Step Goal Color",
         "description": "What color do you want the numbers to turn after hitting your goal?"
+      },
+      {
+        "type": "toggle",
+        "messageKey": "goalvibe",
+        "label": "Vibrate",
+        "defaultValue": false
       }
     ]
   },

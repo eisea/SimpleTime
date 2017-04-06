@@ -173,11 +173,18 @@ static void battery_update_proc(Layer *layer, GContext *ctx) {
   
   int midTime = 52;
   int offsetTime = (1-percent)*midTime;
-  timewidth = timewidth;//-offsetTime;
+  //timewidth = timewidth-offsetTime;
   
-  PBL_IF_ROUND_ELSE(graphics_fill_radial(ctx, frame, GOvalScaleModeFitCircle, 5,
+  if (persist_read_int(MESSAGE_KEY_direction) == 1) {
+    PBL_IF_ROUND_ELSE(graphics_fill_radial(ctx, frame, GOvalScaleModeFitCircle, 5,
                        DEG_TO_TRIGANGLE(125+((1-percent)*55)), DEG_TO_TRIGANGLE(235-(1-percent)*55)), 
                     graphics_fill_rect(ctx, GRect(offsetTime, 0, timewidth, bounds.size.h), 0, GCornerNone));
+  } else {
+    PBL_IF_ROUND_ELSE(graphics_fill_radial(ctx, frame, GOvalScaleModeFitCircle, 5,
+                       DEG_TO_TRIGANGLE(125+((1-percent)*110)), DEG_TO_TRIGANGLE(235)), 
+                    graphics_fill_rect(ctx, GRect(0, 0, width, bounds.size.h), 0, GCornerNone));
+  }
+  
   
 }
 
@@ -211,21 +218,32 @@ static void health_handler(HealthEventType event, void *context) {
         text_layer_set_text_color(s_num_label, goal_color);
         APP_LOG(APP_LOG_LEVEL_ERROR, "Steps color is Goal Color");
         if (persist_exists(MESSAGE_KEY_vibe)) {
-          int vibe1 = persist_read_int(MESSAGE_KEY_vibe);
-          if (vibe1 < 1){
-            vibes_short_pulse();
-            APP_LOG(APP_LOG_LEVEL_INFO, "Goal Reached! Vibrating...");
-            vibe1 = 1;
-            persist_write_int(MESSAGE_KEY_vibe, 1);
+          int v = persist_read_int(MESSAGE_KEY_goalvibe);
+          APP_LOG(APP_LOG_LEVEL_INFO, "%d", v);
+          if (persist_read_int(MESSAGE_KEY_goalvibe) == 1) {
+            int vibe1 = persist_read_int(MESSAGE_KEY_vibe);
+            if (vibe1 < 1){
+              vibes_short_pulse();
+              APP_LOG(APP_LOG_LEVEL_INFO, "Goal Reached! Vibrating...");
+              vibe1 = 1;
+              persist_write_int(MESSAGE_KEY_vibe, 1);
+            }
           }
         }
       }
     }
     // display the step count
+    
+    double floatSteps = 0;
     snprintf(s_value_buffer, sizeof(s_value_buffer), "%d", (int)health_service_sum_today(HealthMetricStepCount));
+    if ((int)health_service_sum_today(HealthMetricStepCount) >= 20000) {
+      floatSteps = ((int)health_service_sum_today(HealthMetricStepCount) / (double)1000);
+      snprintf(s_value_buffer, sizeof(s_value_buffer), "%d.%01dK", (int)floatSteps, (int)(floatSteps*100)%100);
+    }
+    
     text_layer_set_text(s_num_label, s_value_buffer);
   }
-  else if (event == HealthEventSignificantUpdate) {
+  else if ((event == HealthEventSignificantUpdate) && (health_service_sum_today(HealthMetricStepCount) < 500)) {
     persist_write_int(MESSAGE_KEY_vibe, 0);
     snprintf(s_value_buffer, sizeof(s_value_buffer), "%d", (int)health_service_sum_today(HealthMetricStepCount));
     text_layer_set_text_color(s_num_label, GColorFromHEX(persist_read_int(MESSAGE_KEY_TextColor)));
@@ -245,9 +263,9 @@ static void main_window_load(Window *window) {
   APP_LOG(APP_LOG_LEVEL_INFO, "battery time");
 
   s_battery_layer = layer_create(GRect(PBL_IF_ROUND_ELSE(0, 20), PBL_IF_ROUND_ELSE(0, 154), PBL_IF_ROUND_ELSE(180, 104), PBL_IF_ROUND_ELSE(180, 2)));
-  s_weather_layer = text_layer_create(GRect(0, PBL_IF_ROUND_ELSE(117, 120), bounds.size.w, 55));
+  s_weather_layer = text_layer_create(GRect(0, PBL_IF_ROUND_ELSE(117, 118), bounds.size.w, 55));
   s_time_layer = text_layer_create(GRect(0, PBL_IF_ROUND_ELSE(52, 46), bounds.size.w, 80));
-  s_date_layer = PBL_IF_BW_ELSE(text_layer_create(GRect(1, 2, bounds.size.w, 50)), text_layer_create(GRect(PBL_IF_ROUND_ELSE(42, 1), PBL_IF_ROUND_ELSE(15, 1), PBL_IF_ROUND_ELSE(97, 65), 55)));
+  s_date_layer = PBL_IF_BW_ELSE(text_layer_create(GRect(0, 2, bounds.size.w, 50)), text_layer_create(GRect(PBL_IF_ROUND_ELSE(42, 1), PBL_IF_ROUND_ELSE(15, 1), PBL_IF_ROUND_ELSE(97, 65), 55)));
   s_bt_icon_layer = PBL_IF_BW_ELSE(layer_create(GRect(60, 115, 30, 30)), layer_create(GRect(PBL_IF_ROUND_ELSE(75, 62), PBL_IF_ROUND_ELSE(135, 8), 30, 30)));
   
   
@@ -290,8 +308,27 @@ static void main_window_load(Window *window) {
   text_layer_set_text_color(s_weather_layer, text_color);
   //text_layer_set_text_color(s_weather_layer, GColorBlack);
   text_layer_set_text_alignment(s_weather_layer, GTextAlignmentCenter);
+  
   PBL_IF_BW_ELSE(text_layer_set_text(s_weather_layer, ""), text_layer_set_text(s_weather_layer, "Loading..."));
-  s_weather_font = PBL_IF_ROUND_ELSE(fonts_load_custom_font(resource_get_handle(RESOURCE_ID_SF_17)), fonts_load_custom_font(resource_get_handle(RESOURCE_ID_SF_20)));
+  
+  char temp_buffer[8];
+  char conditions_buffer[32];
+  static char weather_buffer[38];
+  if (persist_exists(MESSAGE_KEY_weather)) {
+    snprintf(temp_buffer, sizeof(temp_buffer), "%dº", (int)persist_read_int(MESSAGE_KEY_temp));
+    persist_read_string(MESSAGE_KEY_weather, conditions_buffer, sizeof(conditions_buffer));
+    //snprintf(conditions_buffer, sizeof(conditions_buffer), "%s", "Loading...");
+    snprintf(weather_buffer, sizeof(weather_buffer), "%s, %s", temp_buffer, conditions_buffer);
+    text_layer_set_text(s_weather_layer, weather_buffer);
+  }
+  
+  
+  s_weather_font = PBL_IF_ROUND_ELSE(fonts_load_custom_font(resource_get_handle(RESOURCE_ID_SF_18)), fonts_load_custom_font(resource_get_handle(RESOURCE_ID_SF_21)));
+  /*
+  if (bounds.size.h == 228) {
+    s_weather_font = fonts_load_custom_font(resource_get_handle(RESOURCE_ID_SF_30));
+  }
+  */
   text_layer_set_font(s_weather_layer, s_weather_font);
   
   // Add Weather Layer to Window
@@ -322,7 +359,7 @@ static void main_window_load(Window *window) {
   APP_LOG(APP_LOG_LEVEL_INFO, "date time");
 
   // Date Layer
-  s_date_font = PBL_IF_BW_ELSE(fonts_load_custom_font(resource_get_handle(RESOURCE_ID_SF_20)), fonts_load_custom_font(resource_get_handle(RESOURCE_ID_SF_17)));
+  s_date_font = PBL_IF_BW_ELSE(fonts_load_custom_font(resource_get_handle(RESOURCE_ID_SF_20)), fonts_load_custom_font(resource_get_handle(RESOURCE_ID_SF_18)));
 	text_layer_set_text_color(s_date_layer, text_color);
   //text_layer_set_text_color(s_date_layer, GColorBlack);
   text_layer_set_background_color(s_date_layer, GColorClear);
@@ -377,7 +414,7 @@ static void main_window_load(Window *window) {
   
   //text_layer_set_text_color(s_num_label, GColorBlack);
   text_layer_set_text_alignment(s_num_label, PBL_IF_ROUND_ELSE(GTextAlignmentCenter, GTextAlignmentRight));
-  text_layer_set_font(s_num_label, fonts_load_custom_font(resource_get_handle(RESOURCE_ID_SF_17)));
+  text_layer_set_font(s_num_label, fonts_load_custom_font(resource_get_handle(RESOURCE_ID_SF_18)));
   layer_add_child(window_get_root_layer(window), text_layer_get_layer(s_num_label));
   
   if(health_service_events_subscribe(health_handler, NULL)) {
@@ -468,6 +505,11 @@ static void inbox_received_handler(DictionaryIterator *iterator, void *context) 
   APP_LOG(APP_LOG_LEVEL_INFO, "Reading Goal Color Tuple");
   Tuple *goal_color_t = dict_find(iterator, MESSAGE_KEY_Goal_Color);
   
+  APP_LOG(APP_LOG_LEVEL_INFO, "Reading Goal Vibe");
+  Tuple *goal_vibe_t = dict_find(iterator, MESSAGE_KEY_goalvibe);
+  
+  APP_LOG(APP_LOG_LEVEL_INFO, "Reading Goal Vibe");
+  Tuple *goal_direction_t = dict_find(iterator, MESSAGE_KEY_direction);
   
   GColor bg_color = GColorFromHEX(persist_read_int(MESSAGE_KEY_BackgroundColor));
   window_set_background_color(s_main_window, bg_color);
@@ -538,11 +580,15 @@ static void inbox_received_handler(DictionaryIterator *iterator, void *context) 
     } else {
       if (persist_exists(MESSAGE_KEY_vibe)){
         int vibe2 = persist_read_int(MESSAGE_KEY_vibe);
-        if (vibe2 < 1){
+        int v = persist_read_int(MESSAGE_KEY_goalvibe);
+        APP_LOG(APP_LOG_LEVEL_INFO, "%d", v);
+        if (persist_read_int(MESSAGE_KEY_goalvibe) == 1) {
+          if (vibe2 < 1){
           vibes_short_pulse();
           APP_LOG(APP_LOG_LEVEL_INFO, "Goal Reached! Vibrating...");
           vibe2 = 1;
           persist_write_int(MESSAGE_KEY_vibe, 1);
+          }
         }
         text_layer_set_text_color(s_num_label, goal_color);
       }
@@ -552,6 +598,14 @@ static void inbox_received_handler(DictionaryIterator *iterator, void *context) 
     persist_write_int(MESSAGE_KEY_Goal_Color, 0x000000);
   }
   
+  if (goal_vibe_t) {
+    int vibepref = goal_vibe_t->value->int8;
+    persist_write_int(MESSAGE_KEY_goalvibe, vibepref);
+  }
+  if (goal_direction_t) {
+    int direction = goal_direction_t->value->int8;
+    persist_write_int(MESSAGE_KEY_direction, direction);
+  }
   
   /*
   if (custom_location_t) {
@@ -591,11 +645,16 @@ static void inbox_received_handler(DictionaryIterator *iterator, void *context) 
   if(temp_tuple && conditions_tuple && (celsius == 1)) {
     snprintf(temperature_buffer, sizeof(temperature_buffer), "%dº", (int)round((((float)temp_tuple->value->int32) - 32) * (5.0/9.0)));
     snprintf(conditions_buffer, sizeof(conditions_buffer), "%s", conditions_tuple->value->cstring);
+    persist_write_int(MESSAGE_KEY_temp, (int)round((((float)temp_tuple->value->int32) - 32) * (5.0/9.0)));
+    
   } else if(temp_tuple && conditions_tuple && (celsius == 0)) {
     snprintf(temperature_buffer, sizeof(temperature_buffer), "%dº", (int)(int)temp_tuple->value->int32);
     snprintf(conditions_buffer, sizeof(conditions_buffer), "%s", conditions_tuple->value->cstring);
+    persist_write_int(MESSAGE_KEY_temp, (int)(int)temp_tuple->value->int32);
   }
-    
+  
+    persist_write_string(MESSAGE_KEY_weather, conditions_buffer);
+  
     // Assemble full string and display
     snprintf(weather_layer_buffer, sizeof(weather_layer_buffer), "%s, %s", temperature_buffer, conditions_buffer);
     //APP_LOG(APP_LOG_LEVEL_INFO, weather_layer_buffer);

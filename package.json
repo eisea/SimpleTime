@@ -25,11 +25,36 @@
             "Weather_Fetch",
             "Goal_Color",
             "Step_Goal",
-            "vibe"
+            "vibe",
+            "goalvibe",
+            "direction",
+            "temp",
+            "weather"
         ],
         "projectType": "native",
         "resources": {
             "media": [
+                {
+                    "file": "fonts/San Francisco 18",
+                    "name": "SF_18",
+                    "targetPlatforms": null,
+                    "type": "font"
+                },
+                {
+                    "file": "fonts/San Francisco 21",
+                    "name": "SF_21",
+                    "targetPlatforms": null,
+                    "type": "font"
+                },
+                {
+                    "file": "images/SimpleTimeSmall",
+                    "name": "IMAGE_SMALL",
+                    "targetPlatforms": [
+                        "basalt",
+                        "chalk"
+                    ],
+                    "type": "bitmap"
+                },
                 {
                     "file": "images/bluetooth black",
                     "name": "IMAGE_BT_ICON_BLACK",
@@ -41,16 +66,6 @@
                     "name": "IMAGE_BT_ICON",
                     "targetPlatforms": null,
                     "type": "png"
-                },
-                {
-                    "file": "images/SimpleTimeSmall",
-                    "menuIcon": true,
-                    "name": "IMAGE_SMALL",
-                    "targetPlatforms": [
-                        "basalt",
-                        "chalk"
-                    ],
-                    "type": "bitmap"
                 },
                 {
                     "file": "fonts/San Francisco 17",
@@ -82,5 +97,5 @@
             "watchface": true
         }
     },
-    "version": "5.2.0"
+    "version": "5.3.0"
 }
